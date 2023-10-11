@@ -9,6 +9,22 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
+
+// Create a new ratelimiter, that allows 3 requests per 1 minute
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(3, "1 m"),
+  analytics: true,
+  /**
+   * Optional prefix for the keys used in redis. This is useful if you want to share a redis
+   * instance with other applications and want to avoid key collisions. The default prefix is
+   * "@upstash/ratelimit"
+   */
+  prefix: "@upstash/ratelimit",
+});
+
 const filterUserForClient = (user: User) => {
   return {
     id: user.id,
@@ -59,6 +75,20 @@ export const postsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const authorId = ctx.userId;
+
+      // Use a constant string to limit all requests with a single ratelimit
+      // Or use a userID, apiKey or ip address for individual limits.
+      const identifier = "api";
+      const { success } = await ratelimit.limit(identifier);
+
+      if (!success) {
+        // if the limit is reached
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many requests",
+        });
+      }
+
       const post = await ctx.db.post.create({
         data: {
           authorId: authorId,
