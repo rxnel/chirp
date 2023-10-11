@@ -48,6 +48,10 @@ const CreatePostWizard = () => {
         value={input}
         onChange={(e) => setInput(e.target.value)}
         disabled={isPosting}
+        onKeyDown={(e) => {
+          e.preventDefault();
+          if (e.key === "Enter") mutate({ content: input });
+        }}
       />
       {input !== "" && !isPosting && (
         <button onClick={() => mutate({ content: input })}>Post</button>
