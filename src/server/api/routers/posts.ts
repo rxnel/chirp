@@ -1,7 +1,7 @@
-import type { User } from "@clerk/backend/dist/types/api";
 import { clerkClient } from "@clerk/nextjs";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { filterUserForClient } from "~/server/helpers/filterUserForClient";
 
 import {
   createTRPCRouter,
@@ -25,13 +25,6 @@ const ratelimit = new Ratelimit({
   prefix: "@upstash/ratelimit",
 });
 
-const filterUserForClient = (user: User) => {
-  return {
-    id: user.id,
-    username: user.username,
-    profileImageUrl: user.imageUrl,
-  };
-};
 export const postsRouter = createTRPCRouter({
   getAll: publicProcedure.query(async ({ ctx }) => {
     const posts = await ctx.db.post.findMany({
